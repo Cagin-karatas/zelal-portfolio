@@ -1,0 +1,171 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* The 5 hex values live here and nowhere else. tailwind.config.ts reads
+     them through var() so the same source serves compiled Tailwind classes
+     (bg-paper, text-accent…) and the plain inline styles/JS that later
+     effects need (ambient color bleed, misregistration offsets). */
+  --paper: #faf9f7; /* zemin — kırık beyaz, saf beyaz asla */
+  --ink: #111111; /* ana metin — saf siyah asla */
+  --ink-soft: #55524d; /* ikincil metin, meta bilgi */
+  --rule: #e2dfda; /* hairline ayraçlar */
+  --accent: #c1121f; /* tek aksan — WCAG kontrastı design-plan.md §1.1'de hesaplı: ~5.91:1 */
+
+  /* Mirrors lib/motion.ts's DURATION.{fast,base,slow}/EASE.out. Framer
+     Motion effects (Step 7a+) import the TS constants directly; this
+     file's pure-CSS transitions (.hover-opsz-shift, .ambient-color-layer,
+     .focus-dim-*, and Step 7d's SwapLink/ArrowLink hover, below) can't
+     import a TS value, so the numbers are duplicated here by hand. Change
+     both together if either changes. */
+  --duration-fast: 0.3s;
+  --duration-base: 0.6s;
+  --duration-slow: 1.2s;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  * {
+    @apply border-rule;
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  /* Visible on every interactive element, not just links/buttons — the
+     brief's accessibility pass (§9) requires focus to be visible
+     everywhere, and retrofitting that per-component invites gaps. */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Custom cursor (Step 7c) — the native cursor is hidden here, in plain
+     CSS, rather than by CustomCursor.tsx toggling a class after mount:
+     doing it in CSS means there's no frame where the native cursor is
+     visible before JS hydrates, and no dependency on React for something
+     that's really just a `cursor` property. Scoped to the same
+     `(hover: hover) and (pointer: fine)` query CustomCursor's own
+     `useFinePointer` hook checks, so touch input is never affected —
+     and see app/layout.tsx's <noscript> fallback for JS-disabled. */
+  @media (hover: hover) and (pointer: fine) {
+    html {
+      cursor: none;
+    }
+  }
+}
+
+@layer components {
+  /* The single label idiom (§3.2): uppercase, tracked, ink-soft by
+     default. Interactive/active contexts (nav's current item, hover
+     states) override the color explicitly with text-accent — the
+     accent-on-paper contrast passes AA (design-plan.md §1.1), so that
+     override is a deliberate accent use, not a fallback. This class is
+     called everywhere a label appears; it is never reassembled from
+     loose utilities in a component. */
+  .label {
+    @apply text-label uppercase text-ink-soft;
+  }
+}
+
+@layer utilities {
+  /* Optical alignment (§6 item 4): the didone's left sidebearing makes a
+     display headline look indented next to body text that starts flush.
+     -0.06em was chosen by eye against the actual rendered glyphs, not
+     computed from font metrics — "optically even" is not a formula. */
+  .optical-tighten {
+    margin-inline-start: -0.06em;
+  }
+
+  /* Paper vignette (§6 item 15) — the backmost of the fixed atmosphere
+     layers (vinyet → ambient renk → içerik → grain). Derived from the
+     existing --paper/--ink tokens via color-mix() instead of a new hex
+     value, so darkening the edges by ~3% doesn't require a 6th color. */
+  .paper-vignette {
+    background: radial-gradient(
+      ellipse at center,
+      var(--paper) 55%,
+      color-mix(in srgb, var(--paper) 97%, var(--ink) 3%) 100%
+    );
+  }
+
+  /* Variable-font optical size, shifted on hover (§6 item 9) — the one
+     micro-interaction in the whole site that isn't transform/opacity,
+     because nothing else can imitate what changing a font's own optical
+     cut does. The resting state deliberately sets no explicit
+     font-variation-settings: `font-optical-sizing: auto` is the CSS
+     default, so Bodoni Moda already picks the right opsz for whatever
+     size it's rendered at (a clamp()'d value that changes with the
+     viewport). Hovering overrides that with one specific, smaller cut,
+     so the weight visibly (but subtly) thins. */
+  .hover-opsz-shift {
+    transition: font-variation-settings var(--duration-base) var(--ease-out);
+  }
+
+  .hover-opsz-shift:hover {
+    font-variation-settings: "opsz" 12;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hover-opsz-shift {
+      transition: none;
+    }
+  }
+
+  /* Ambient color bleed (§3.6, Step 7b) — only `opacity` transitions here,
+     not `background-color`: the layer's color is swapped instantly
+     whenever a new image is hovered (see AmbientColorProvider), so what
+     the viewer actually perceives easing in and out is the wash's
+     strength, not a cross-fade between two arbitrary hues. A slow
+     duration (--duration-slow, not the hover-scale --duration-base) is
+     what makes it read as the room's light settling rather than a UI
+     hover state. */
+  .ambient-color-layer {
+    transition: opacity var(--duration-slow) var(--ease-out);
+  }
+
+  /* Focus-dimming (§5, Step 7b) — hovering one item inside a
+     `.focus-dim-group` dims every *other* `.focus-dim-item` in it.
+     `:has()` is what makes "every other item" possible: plain `:hover`
+     bubbling on the container only knows hover is happening somewhere
+     inside it, never which specific child. */
+  .focus-dim-group:has(.focus-dim-item:hover) .focus-dim-item:not(:hover) {
+    opacity: 0.4;
+  }
+
+  .focus-dim-item {
+    transition: opacity var(--duration-base) var(--ease-out);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* The dimmed *state* stays — it's a static opacity value, not motion —
+       only the eased transition into and out of it is removed, the same
+       policy as every other device in the interaction layer. */
+    .ambient-color-layer,
+    .focus-dim-item {
+      transition: none;
+    }
+  }
+
+  /* Grain (Step 7d) — a static, unanimated noise texture, not a flicker:
+     an animated grain would be motion requiring its own
+     prefers-reduced-motion handling for a very marginal authenticity
+     gain, so it's left still. feTurbulence's default output is RGB noise;
+     feColorMatrix's saturate(0) desaturates it to grayscale before it
+     ever reaches the page, so blending it in only ever modulates existing
+     luminance — it can't introduce a new hue outside the 5-color system,
+     the same reasoning `.paper-vignette` already relies on for
+     color-mix(). Sits at z-grain (Step 2's constant), the topmost fixed
+     layer by design — even the custom cursor renders through it, so
+     "grain across the whole image" includes everything drawn on top of
+     it, not just the content underneath. */
+  .grain-layer {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch' result='noise'/%3E%3CfeColorMatrix in='noise' type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 180px 180px;
+    opacity: 0.05;
+    mix-blend-mode: overlay;
+  }
+}
