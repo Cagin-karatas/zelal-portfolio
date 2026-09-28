@@ -1,45 +1,55 @@
-import { SOCIAL_LINKS, SITE } from "@/content/site";
-import { SECTION_ID } from "@/lib/constants";
-import { Section } from "@/components/layout/Section";
-import { ClipReveal } from "@/components/motion/ClipReveal";
-import { SwapLink } from "@/components/ui/SwapLink";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { SectionHeader } from "@/components/layout/SectionHeader";
+import { sectionMeta, siteIdentity, socialLinks } from "@/content/site";
 
-/**
- * The one deliberately calm beat on the page (design-plan.md §4): no
- * opener strip, no asymmetry, just a single quiet row. Both the copyright
- * line and the social links use `.label` — understated by design, and
- * the same idiom used everywhere else rather than a one-off footer style.
- *
- * Still gets the same ClipReveal (Step 7a) as Disciplines/Selected
- * Work — calm doesn't mean exempt from the site's one entrance idiom for
- * below-the-fold content, it just means there's less inside it to reveal.
- * Social links share Header nav's vertical text-swap hover (`SwapLink`,
- * §5.10, Step 7d) — one link-hover idiom sitewide, not two.
- */
 export function Footer() {
-  // Resolved at build time, not per-request — this page has no dynamic
-  // rendering, so the year is correct as of the last deploy and updates
-  // on the next one. A portfolio site redeploys far more often than
-  // once a year, so that's not a real staleness risk here.
   const currentYear = new Date().getFullYear();
+  const contactMeta = sectionMeta.contact;
 
   return (
-    <Section id={SECTION_ID.footer}>
-      <ClipReveal className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <p className="label">
-          © {currentYear} {SITE.name}. All rights reserved.
-        </p>
+    <footer id={contactMeta.id} aria-labelledby={`${contactMeta.id}-title`}>
+      <PageContainer className="pb-7">
+        <SectionHeader
+          titleId={`${contactMeta.id}-title`}
+          number={contactMeta.number}
+          title={contactMeta.title}
+          count={contactMeta.count}
+        />
 
-        <ul className="flex gap-6">
-          {SOCIAL_LINKS.map((link) => (
-            <li key={link.label}>
-              <SwapLink href={link.href} target="_blank" rel="noreferrer noopener">
-                {link.label}
-              </SwapLink>
-            </li>
-          ))}
-        </ul>
-      </ClipReveal>
-    </Section>
+        <div className="grid grid-cols-editorial gap-x-gutter gap-y-6 pt-7">
+          <div className="col-span-12 md:col-span-4">
+            <p className="label text-ink">© {currentYear} Zelal Günay</p>
+            <p className="label mt-2">All rights reserved</p>
+          </div>
+
+          <nav className="col-span-12 md:col-span-4" aria-label="Social links">
+            <ul className="space-y-2">
+              {socialLinks.map((socialLink) => (
+                <li key={socialLink.label}>
+                  <a
+                    className="label inline-block py-2 text-ink"
+                    href={socialLink.href}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {socialLink.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <div className="col-span-12 md:col-span-4 md:text-right">
+            <p className="label">{siteIdentity.location}</p>
+            <a
+              className="label mt-3 inline-block text-ink"
+              href={`mailto:${siteIdentity.contactEmail}`}
+            >
+              {siteIdentity.contactEmail} <span className="text-accent">→</span>
+            </a>
+          </div>
+        </div>
+      </PageContainer>
+    </footer>
   );
 }

@@ -1,21 +1,39 @@
-"use client"; // calls the Lenis-mounting hook, a browser-only side effect
+// Client effects are required to drive and dispose the Lenis requestAnimationFrame loop.
+"use client";
 
-import { useLenis } from "@/lib/hooks/useLenis";
+import { useEffect } from "react";
+import Lenis from "lenis";
 
-/**
- * New folder, not in the brief's §8 skeleton: Step 7a introduces four
- * distinct interaction devices (this, ClipReveal, LineMaskHeadline,
- * ParallaxImage) that don't belong under `layout/` (they're not page
- * chrome) or `ui/` (they're not visual atoms) or `sections/` (they're
- * reused across sections) — `components/motion/` groups them by what they
- * actually are.
- *
- * Renders nothing. Its only job is calling `useLenis()` once, so smooth
- * scrolling mounts for the page's lifetime without turning
- * `app/layout.tsx` itself into a client component — the "use client"
- * boundary sits at this one leaf instead.
- */
-export function SmoothScroll(): null {
-  useLenis();
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { MEDIA_QUERY } from "@/lib/constants";
+import { LENIS_MOTION } from "@/lib/motion";
+
+export function SmoothScroll() {
+  const isReducedMotion = usePrefersReducedMotion();
+
+  useEffect(() => {
+    if (isReducedMotion || window.matchMedia(MEDIA_QUERY.reducedMotion).matches) {
+      return;
+    }
+
+    const lenis = new Lenis({
+      lerp: LENIS_MOTION.lerp,
+      smoothWheel: true,
+    });
+    let animationFrameId = 0;
+
+    const handleAnimationFrame = (time: number) => {
+      lenis.raf(time);
+      animationFrameId = window.requestAnimationFrame(handleAnimationFrame);
+    };
+
+    animationFrameId = window.requestAnimationFrame(handleAnimationFrame);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+      lenis.destroy();
+    };
+  }, [isReducedMotion]);
+
   return null;
 }

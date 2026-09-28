@@ -1,49 +1,59 @@
-import { SECTION_ID } from "@/lib/constants";
+import { SECTION_IDS } from "@/lib/constants";
+import type { DisciplineSlug } from "@/types/disciplines";
+import type { NavigationItem, ProgressSection, SectionMeta, SocialLink } from "@/types/site";
 
-export const SITE = {
+export const siteIdentity = {
   name: "Zelal Günay",
-  logoMonogram: "ZG",
-  tagline: "I tell stories through images, words and frames.",
+  title: "Zelal Günay — Visual Storyteller",
+  description: "Director, screenwriter, photographer and visual storyteller based in Istanbul.",
+  canonicalUrl: "https://zelalgunay.com",
+  monogram: "ZG",
+  slogan: "I tell stories through images, words and frames.",
+  introduction: [
+    "Zelal Günay is a visual storyteller and director working across film, photography, and creative direction. A graduate of Bilkent University's Communication and Design (COMD) program, she builds concept-driven work through narrative structure, image-making, and editorial precision.",
+    "Her practice explores memory, perception, and human behavior, with particular attention to atmosphere and emotional rhythm. Working across directing, scriptwriting, photography, and post-production, she develops each project as a cohesive visual system—from the first idea to the final frame.",
+  ],
   roles: ["Visual Storyteller", "Director", "Screenwriter", "Photographer"],
   location: "Based in Istanbul, working worldwide",
-  // Kept in sentence case: the `.label` component applies uppercase via
-  // CSS, so the source string doesn't need to fight that transform. The
-  // em dash (rather than the comma used in `location` above) is this
-  // string's own punctuation, for the fixed edge column (§6 item 1).
-  locationLabel: "Based in Istanbul — working worldwide",
+  contactEmail: "zelalaska@gmail.com",
 } as const;
 
-export interface NavLink {
-  label: string;
-  href: string;
-}
+export const navigation = [
+  { label: "Work", href: `#${SECTION_IDS.work}` },
+  { label: "About", href: `#${SECTION_IDS.about}` },
+  { label: "Archive", href: `#${SECTION_IDS.archive}` },
+  { label: "Contact", href: `#${SECTION_IDS.contact}` },
+] as const satisfies readonly NavigationItem[];
 
-/**
- * ASSUMPTION: the brief's page structure (§4) defines only four sections —
- * Hero, Disciplines, Selected Work, Footer — but the nav row (brief §2)
- * lists Work / About / Archive / Contact. Rather than invent two sections
- * nothing in the brief describes, "About" anchors to Hero (where the bio
- * and role list already live) and "Archive" anchors to Footer until a
- * dedicated archive route exists. Flagging this so it's revisited once
- * there's real Archive content to route to instead of the footer.
- */
-export const NAV_LINKS: NavLink[] = [
-  { label: "Work", href: `#${SECTION_ID.selectedWork}` },
-  { label: "About", href: `#${SECTION_ID.hero}` },
-  { label: "Archive", href: `#${SECTION_ID.footer}` },
-  { label: "Contact", href: "mailto:hello@zelalgunay.com" },
-];
+export const socialLinks = [
+  { label: "Instagram", href: "https://www.instagram.com/zelalgunayy" },
+] as const satisfies readonly SocialLink[];
 
-export interface SocialLink {
-  label: string;
-  href: string;
-}
+// Discipline numbers move from Zelal's primary narrative practice toward tactile image-making.
+export const disciplineOrder = [
+  "visual-storytelling",
+  "directing",
+  "script-writing",
+  "photography",
+  "collage-drawings",
+] as const satisfies readonly DisciplineSlug[];
 
-// ASSUMPTION: gerçek sosyal medya hesap adları elimde değil; yer
-// tutucu kullanıcı adlarıyla dolduruldu. Gerçek hesaplar geldiğinde
-// sadece bu üç href değişecek.
-export const SOCIAL_LINKS: SocialLink[] = [
-  { label: "Instagram", href: "https://instagram.com/zelalgunay" },
-  { label: "Vimeo", href: "https://vimeo.com/zelalgunay" },
-  { label: "Letterboxd", href: "https://letterboxd.com/zelalgunay" },
-];
+export const sectionMeta = {
+  about: { id: SECTION_IDS.about, number: "01", title: "About", count: 1 },
+  disciplines: {
+    id: SECTION_IDS.disciplines,
+    number: "02",
+    title: "Disciplines",
+    count: 5,
+  },
+  work: { id: SECTION_IDS.work, number: "03", title: "Selected Work", count: 33 },
+  contact: { id: SECTION_IDS.contact, number: "04", title: "Contact", count: 1 },
+} as const satisfies Readonly<Record<Exclude<keyof typeof SECTION_IDS, "archive">, SectionMeta>>;
+
+// Archive remains inside Selected Work's 03 chapter instead of inventing a fifth section number.
+export const progressSections = [
+  { id: SECTION_IDS.about, number: sectionMeta.about.number },
+  { id: SECTION_IDS.disciplines, number: sectionMeta.disciplines.number },
+  { id: SECTION_IDS.work, number: sectionMeta.work.number },
+  { id: SECTION_IDS.contact, number: sectionMeta.contact.number },
+] as const satisfies readonly ProgressSection[];

@@ -1,38 +1,53 @@
-"use client"; // IntersectionObserver + live scroll progress are both browser-only, and both drive live UI updates here
+// Client boundary: live scroll measurements animate the rail fill and masked section number.
+"use client";
 
-import { motion, useScroll } from "motion/react";
-import { useActiveSectionNumber } from "@/lib/hooks/useActiveSectionNumber";
+import { AnimatePresence, motion } from "motion/react";
 
-/**
- * EdgeFrame's right-hand column, wired to real scroll state (§5.8): the
- * number is whichever section is most visible right now, and the hairline
- * beneath it fills with `--accent` from top to bottom as the page is
- * scrolled through. The structural placement (a number over an h-24 line)
- * was built in Step 3; this is the first time either value is live rather
- * than a fixed "01" over a plain `--rule` line.
- *
- * Not gated on prefers-reduced-motion: `scrollYProgress` is a direct,
- * un-eased reflection of scroll position — it has no spring or duration
- * of its own to remove, the same way a native scrollbar thumb isn't
- * "motion" to turn off. The number is a discrete text swap, not a
- * transform. Neither is the kind of effect that preference targets.
- */
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { useSectionProgress } from "@/hooks/useSectionProgress";
+import { Z_LAYER_CLASS } from "@/lib/constants";
+import { DURATION, EASE, SCROLL_PROGRESS } from "@/lib/motion";
+
 export function ScrollProgress() {
-  const activeSectionNumber = useActiveSectionNumber();
-  const { scrollYProgress } = useScroll();
+  const { progress, activeNumber } = useSectionProgress();
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const numberTransition = prefersReducedMotion
+    ? { duration: 0 }
+    : { duration: DURATION.fast, ease: EASE.out };
 
   return (
-    <>
-      <span className="text-number tabular-nums text-ink-soft">
-        {activeSectionNumber}
-      </span>
-      <span className="relative block h-24 w-px bg-rule">
-        <motion.span
-          aria-hidden="true"
-          className="absolute inset-x-0 top-0 h-full origin-top bg-accent"
-          style={{ scaleY: scrollYProgress }}
+    <div
+      className={`fixed right-3 top-1/2 flex -translate-y-1/2 flex-col items-center gap-3 ${Z_LAYER_CLASS.rails}`}
+      aria-hidden="true"
+    >
+      <span className="relative h-9 w-hairline overflow-hidden bg-rule">
+        <span
+          className="absolute inset-0 origin-top bg-accent"
+          style={{ transform: `scaleY(${progress})` }}
         />
       </span>
-    </>
+      <span className="relative h-4 w-5 overflow-hidden text-number text-accent tabular-numbers">
+        <AnimatePresence initial={false} mode="wait">
+          <motion.span
+            key={activeNumber}
+            className="absolute inset-0 text-center"
+            initial={{
+              y: prefersReducedMotion
+                ? SCROLL_PROGRESS.visibleNumberY
+                : SCROLL_PROGRESS.hiddenNumberY,
+            }}
+            animate={{ y: SCROLL_PROGRESS.visibleNumberY }}
+            exit={{
+              y: prefersReducedMotion
+                ? SCROLL_PROGRESS.visibleNumberY
+                : SCROLL_PROGRESS.exitingNumberY,
+            }}
+            transition={numberTransition}
+          >
+            {activeNumber}
+          </motion.span>
+        </AnimatePresence>
+      </span>
+    </div>
   );
 }

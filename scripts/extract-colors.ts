@@ -1,108 +1,110 @@
-import { mkdir, readdir, writeFile } from "node:fs/promises";
+import { readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+
 import sharp from "sharp";
-import type { ImageManifest } from "../types/image";
 
-const IMAGES_DIRECTORY = path.join(process.cwd(), "public", "images");
-const OUTPUT_FILE = path.join(
-  process.cwd(),
-  "content",
-  "generated",
-  "image-manifest.json",
-);
-const SUPPORTED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
-// Small enough to cost nothing to inline as base64, large enough that the
-// blur still reads as the image's shape rather than a flat color.
-const BLUR_PLACEHOLDER_WIDTH_PIXELS = 12;
-
-async function listImageFiles(directory: string): Promise<string[]> {
-  let entries;
-  try {
-    entries = await readdir(directory, { withFileTypes: true });
-  } catch {
-    // public/images doesn't exist yet — real photography hasn't been
-    // placed. Not an error at this stage of the build.
-    return [];
-  }
-
-  const files: string[] = [];
-  for (const entry of entries) {
-    const fullPath = path.join(directory, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await listImageFiles(fullPath)));
-      continue;
-    }
-    if (SUPPORTED_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
-      files.push(fullPath);
-    }
-  }
-  return files;
+interface GeneratedImageEntry {
+  readonly source: string;
+  readonly width: number;
+  readonly height: number;
+  readonly dominantColor: `#${string}`;
+  readonly blurDataUrl: `data:image/${string}`;
 }
 
-function rgbToHex(red: number, green: number, blue: number): string {
-  const toHex = (value: number) => value.toString(16).padStart(2, "0");
-  return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
-}
+const workspaceDirectory = process.cwd();
+const imagesDirectory = path.join(workspaceDirectory, "public", "images");
+const manifestPath = path.join(workspaceDirectory, "content", "image-manifest.generated.ts");
+const supportedExtensions = new Set([".avif", ".jpeg", ".jpg", ".png", ".webp"]);
 
-/**
- * Dominant color is extracted at build time, never at runtime. Resizing an
- * image to 1x1 with sharp is a single decode-and-downsample on the server;
- * doing the equivalent with a <canvas> in the browser means shipping a
- * fully decoded bitmap to the client just to throw away every pixel but
- * one. See design-plan.md §5.1 for the full rationale.
- */
-async function extractDominantColor(filePath: string): Promise<string> {
-  const { data } = await sharp(filePath)
-    .resize(1, 1, { fit: "fill" })
-    .raw()
-    .toBuffer({ resolveWithObject: true });
+async function collectImagePaths(directory: string): Promise<readonly string[]> {
+  const directoryEntries = await readdir(directory, { withFileTypes: true });
+  const nestedPaths = await Promise.all(
+    directoryEntries.map(async (directoryEntry) => {
+      const entryPath = path.join(directory, directoryEntry.name);
 
-  const [red, green, blue] = data;
-  return rgbToHex(red ?? 0, green ?? 0, blue ?? 0);
-}
+      if (directoryEntry.isDirectory()) {
+        return collectImagePaths(entryPath);
+      }
 
-async function extractBlurDataUrl(filePath: string): Promise<string> {
-  const resized = await sharp(filePath)
-    .resize(BLUR_PLACEHOLDER_WIDTH_PIXELS)
-    .jpeg({ quality: 40 })
-    .toBuffer();
-  return `data:image/jpeg;base64,${resized.toString("base64")}`;
-}
-
-function toManifestKey(filePath: string): string {
-  return path.relative(IMAGES_DIRECTORY, filePath).split(path.sep).join("/");
-}
-
-async function main(): Promise<void> {
-  const files = await listImageFiles(IMAGES_DIRECTORY);
-
-  if (files.length === 0) {
-    console.warn(
-      "[extract-colors] public/images altında görsel bulunamadı — boş manifest yazılıyor. " +
-        "Görseller eklendiğinde `npm run extract-colors` tekrar çalıştırılmalı.",
-    );
-  }
-
-  const manifest: ImageManifest = {};
-
-  for (const filePath of files) {
-    const key = toManifestKey(filePath);
-    const [dominantColor, blurDataUrl] = await Promise.all([
-      extractDominantColor(filePath),
-      extractBlurDataUrl(filePath),
-    ]);
-    manifest[key] = { dominantColor, blurDataUrl };
-    console.info(`[extract-colors] ${key} → ${dominantColor}`);
-  }
-
-  await mkdir(path.dirname(OUTPUT_FILE), { recursive: true });
-  await writeFile(OUTPUT_FILE, `${JSON.stringify(manifest, null, 2)}\n`, "utf-8");
-  console.info(
-    `[extract-colors] ${files.length} görsel işlendi → ${path.relative(process.cwd(), OUTPUT_FILE)}`,
+      const extension = path.extname(directoryEntry.name).toLowerCase();
+      return supportedExtensions.has(extension) ? [entryPath] : [];
+    }),
   );
+
+  return nestedPaths.flat().sort((firstPath, secondPath) => firstPath.localeCompare(secondPath));
 }
 
-main().catch((error: unknown) => {
-  console.error("[extract-colors] başarısız oldu:", error);
-  process.exitCode = 1;
-});
+function channelToHex(channel: number): string {
+  return channel.toString(16).padStart(2, "0").toUpperCase();
+}
+
+async function extractImageEntry(imagePath: string): Promise<GeneratedImageEntry> {
+  const normalizedImage = sharp(imagePath).rotate().toColorspace("srgb");
+  const metadata = await normalizedImage.metadata();
+
+  if (metadata.width === undefined || metadata.height === undefined) {
+    throw new Error(`Image dimensions could not be read: ${imagePath}`);
+  }
+
+  // One-pixel sampling happens at build time so pointer movement never triggers canvas work.
+  const dominantPixel = await normalizedImage
+    .clone()
+    .resize(1, 1, { fit: "fill" })
+    .removeAlpha()
+    .raw()
+    .toBuffer();
+  const red = dominantPixel[0];
+  const green = dominantPixel[1];
+  const blue = dominantPixel[2];
+
+  if (red === undefined || green === undefined || blue === undefined) {
+    throw new Error(`Dominant color could not be sampled: ${imagePath}`);
+  }
+
+  // The tiny JPEG preserves a dark image's tonal character instead of flashing a pale placeholder.
+  const blurBuffer = await normalizedImage
+    .clone()
+    .resize({ width: 16, height: 16, fit: "inside", withoutEnlargement: true })
+    .jpeg({ quality: 48, chromaSubsampling: "4:2:0" })
+    .toBuffer();
+  const relativePath = path.relative(imagesDirectory, imagePath).split(path.sep).join("/");
+
+  return {
+    source: `/images/${relativePath}`,
+    width: metadata.width,
+    height: metadata.height,
+    dominantColor: `#${channelToHex(red)}${channelToHex(green)}${channelToHex(blue)}`,
+    blurDataUrl: `data:image/jpeg;base64,${blurBuffer.toString("base64")}`,
+  };
+}
+
+function serializeManifest(entries: Readonly<Record<string, GeneratedImageEntry>>): string {
+  return [
+    'import type { ImageManifestEntry } from "@/types/images";',
+    "",
+    "// This file is regenerated by scripts/extract-colors.ts before each production build.",
+    `export const imageManifest = ${JSON.stringify(entries, null, 2)} satisfies Readonly<Record<string, ImageManifestEntry>>;`,
+    "",
+  ].join("\n");
+}
+
+async function generateImageManifest(): Promise<void> {
+  const imagePaths = await collectImagePaths(imagesDirectory);
+  const imageEntries = await Promise.all(imagePaths.map(extractImageEntry));
+  const manifest = Object.fromEntries(
+    imagePaths.map((imagePath, index) => {
+      const relativePath = path.relative(imagesDirectory, imagePath).split(path.sep).join("/");
+      const imageEntry = imageEntries[index];
+
+      if (imageEntry === undefined) {
+        throw new Error(`Generated image entry is missing: ${relativePath}`);
+      }
+
+      return [relativePath, imageEntry];
+    }),
+  );
+
+  await writeFile(manifestPath, serializeManifest(manifest), "utf8");
+}
+
+await generateImageManifest();
