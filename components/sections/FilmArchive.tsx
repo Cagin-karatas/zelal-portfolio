@@ -23,7 +23,7 @@ export function FilmArchive() {
         {filmWorks.map((film) => (
           <li key={film.id} id={film.id} className="scroll-mt-8">
             <figure>
-              <div className="aspect-film overflow-hidden bg-ink">
+              <div className="h-video-player overflow-hidden bg-ink sm:aspect-film sm:h-auto">
                 <iframe
                   src={getDrivePreviewUrl(film.driveFileId)}
                   title={`${film.title} — complete ${film.category.toLowerCase()}`}

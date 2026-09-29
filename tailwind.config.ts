@@ -62,6 +62,7 @@ const config = {
       misregister: "0.125rem",
       cursor: "4rem",
       "cursor-preview": "10rem",
+      "video-player": "18.75rem",
     },
     maxWidth: {
       copy: "62ch",

@@ -31,7 +31,7 @@ The public portfolio contains only supplied work—no generated project cards or
 
 ![Complete film player in the portfolio](docs/screenshots/desktop-films.jpg)
 
-Every film uses a large 16:9 player with fullscreen controls. The source files are embedded directly: the site does not trim, crop, transcode, mute, accelerate, autoplay, or force-loop the videos.
+Every film uses a large 16:9 desktop player with fullscreen controls. On mobile, the player expands vertically so Google Drive's complete playback bar remains visible without widening or cropping the frame. The source files are embedded directly: the site does not trim, crop, transcode, mute, accelerate, autoplay, or force-loop the videos.
 
 ## Responsive editorial system
 
@@ -90,8 +90,8 @@ Last manually verified against the production deployment on **30 September 2026*
 | ------------------------- | -------------------------------------: | ----------------------------------: |
 | Horizontal overflow       |                                   None |                                None |
 | Portfolio images          |                           31/31 loaded | Hero media loaded at complete ratio |
-| Embedded videos           |       4/4 loaded and play/pause tested |         327 × 184 responsive player |
-| Film player size          |                             1296 × 729 |                           327 × 184 |
+| Embedded videos           |       4/4 loaded and play/pause tested |  Playback bar and controls verified |
+| Film player size          |                             1296 × 729 |       327 × 300 control-safe player |
 | Main navigation           | Work, About, Archive, Contact verified |    All four anchor targets verified |
 | Instagram and email links |                               Verified |                            Verified |
 | Browser console errors    |                                   None |                                None |
