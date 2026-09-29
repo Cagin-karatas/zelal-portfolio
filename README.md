@@ -8,15 +8,24 @@ An editorial portfolio built to present complete works without cropping, trimmin
 
 [Live Portfolio](https://zelal-portfolio.vercel.app) · [Instagram](https://www.instagram.com/zelalgunayy) · [Email](mailto:zelalaska@gmail.com)
 
+**Portfolio and artwork by Zelal Günay · Website designed and developed by [Cahit Çağın Karataş](https://github.com/Cagin-karatas)**
+
 </div>
 
 ![Zelal Günay portfolio desktop hero](docs/screenshots/desktop-hero.jpg)
 
 ## About the portfolio
 
-Zelal Günay is a visual storyteller and director working across film, photography, and creative direction. A graduate of Bilkent University's Communication and Design (COMD) program, she develops concept-driven work through narrative structure, image-making, and editorial precision.
+Zelal Günay is the artist and portfolio owner. She is a visual storyteller and director working across film, photography, and creative direction. A graduate of Bilkent University's Communication and Design (COMD) program, she develops concept-driven work through narrative structure, image-making, and editorial precision.
 
-The site is designed as a long-form visual sequence rather than a generic portfolio template. Its 12-column editorial grid, high-contrast typography, restrained red accent, fixed edge architecture, and image-led pacing create a presentation language influenced by film titles, contact sheets, and printed matter.
+The website was designed and developed by Cahit Çağın Karataş for Zelal Günay. It is structured as a long-form visual sequence rather than a generic portfolio template. Its 12-column editorial grid, high-contrast typography, restrained red accent, fixed edge architecture, and image-led pacing create a presentation language influenced by film titles, contact sheets, and printed matter.
+
+## Credits
+
+| Role                                                         | Credit              |
+| ------------------------------------------------------------ | ------------------- |
+| Portfolio owner, films, photography, writing and artwork     | Zelal Günay         |
+| Website concept, art direction, UI/UX design and development | Cahit Çağın Karataş |
 
 ## Selected work
 
@@ -153,4 +162,4 @@ The production site is deployed on Vercel from the `main` branch. Next.js image 
 
 ---
 
-Portfolio work and imagery © Zelal Günay. All rights reserved.
+Portfolio work and imagery © Zelal Günay. Website design and development © 2026 Cahit Çağın Karataş. All rights reserved.
